@@ -6,24 +6,26 @@ class Type:
     MAX_WORD_LENGTH = 8
     MAX_FIELD_NUMBER = 10
     EPSILON = b''
-    FORMAT = '{}s'.format(MAX_WORD_LENGTH) * (MAX_FIELD_NUMBER + 1) + 'q'
+    FORMAT = 'q' + '{}s'.format(MAX_WORD_LENGTH) * (MAX_FIELD_NUMBER + 1)
 
     def __init__(self, type_data):
         self.type_name = type_data[0]
         self.field_names = type_data[1:]
         self.field_number = len(type_data) - 1
 
+    def get_structured_type(self):
+        structured_type = [self.field_number, self.type_name.encode(Type.ENCODING)]
+        structured_type.extend([field_name.encode(Type.ENCODING) for field_name in self.field_names])
+        structured_type.extend([Type.EPSILON for _ in range(Type.MAX_FIELD_NUMBER - len(self.field_names))])
+        return structured_type
+
     def pack(self):
-        type_name_as_bytes = self.type_name.encode(Type.ENCODING)
-        field_names_as_bytes = [field_name.encode(Type.ENCODING) for field_name in self.field_names]
-        for _ in range(Record.MAX_FIELD_NUMBER - len(self.field_names)):
-            field_names_as_bytes.append(Type.EPSILON)
-        return struct.pack(Type.FORMAT, type_name_as_bytes, *field_names_as_bytes, self.field_number)
+        return struct.pack(Type.FORMAT, *self.get_structured_type())
 
     @classmethod
     def unpack(cls, packed):
         unpacked = list(struct.unpack(Type.FORMAT, packed))
-        field_number = unpacked.pop()
+        field_number = unpacked.pop(0)
         decoded = [encoded.decode() for encoded in unpacked]
         return cls(decoded[:field_number+1])
 
@@ -54,14 +56,10 @@ class Record:
         unpacked = list(struct.unpack(Record.FORMAT, packed))
         return cls(unpacked[3:], unpacked[0])
 
-class TypePage:
-    pass
-
 class RecordPage:
 
     MAX_RECORD_NUMBER = 30
     NUMBER_OF_BYTES = 3128
-    s = struct.Struct(Record.FORMAT)
     FORMAT = 'q' + Record.FORMAT * MAX_RECORD_NUMBER
     STRUCTURED_EMPTY_RECORD = Record([0], False).get_structured_record()
 
@@ -103,10 +101,66 @@ class RecordPage:
     def unpack(cls, packed):
         unpacked = list(struct.unpack(RecordPage.FORMAT, packed))
         newPage = cls()
-        newPage.number_of_records = unpacked[0]
-        for index in range(newPage.number_of_records):
+        number_of_records = unpacked[0]
+        for index in range(number_of_records):
             start_index = index * 13 + 4
             end_index = start_index + unpacked[start_index - 1]
             newRecord = Record(unpacked[start_index:end_index])
             newPage.add_record(newRecord)
+        return newPage
+
+
+class TypePage:
+
+    MAX_TYPE_NUMBER = 30
+    NUMBER_OF_BYTES = 2888
+    FORMAT = 'q' + Type.FORMAT * MAX_TYPE_NUMBER
+    STRUCTURED_EMPTY_TYPE = Type(["NONE"]).get_structured_type()
+
+    def __init__(self):
+        self.number_of_types = 0
+        self.types = []
+
+    def add_type(self,type):
+        if self.number_of_types < 30:
+            self.types.append(type)
+            self.number_of_types += 1
+            return True
+        return False
+
+    def search_type(self, type_name):
+        if self.number_of_types > 0:
+            for type in self.types:
+                if type.type_name == type_name:
+                    return type
+
+        return None
+
+    def delete_type(self, type_name):
+        type = self.search_type(type_name)
+        if type:
+            self.types.remove(type)
+            self.number_of_types -= 1
+            return True
+        return False
+
+    def pack(self):
+        structured_page = [self.number_of_types]
+        for type in self.types:
+            structured_page.extend(type.get_structured_type())
+        for _ in range(TypePage.MAX_TYPE_NUMBER - self.number_of_types):
+            structured_page.extend(TypePage.STRUCTURED_EMPTY_TYPE)
+        return struct.pack(TypePage.FORMAT, *structured_page)
+
+    @classmethod
+    def unpack(cls, packed):
+        unpacked = list(struct.unpack(TypePage.FORMAT, packed))
+        newPage = cls()
+        number_of_types = unpacked[0]
+        for index in range(number_of_types):
+            start_index = index * 12 + 2
+            field_number = unpacked[start_index-1]
+            type_data = [encoded.decode() for encoded in unpacked[start_index:start_index + field_number + 1]]
+            newType = Type(type_data)
+            newPage.add_type(newType)
         return newPage
