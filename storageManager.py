@@ -133,7 +133,6 @@ class TypePage:
             for type in self.types:
                 if type.type_name == type_name:
                     return type
-
         return None
 
     def delete_type(self, type_name):
@@ -160,7 +159,52 @@ class TypePage:
         for index in range(number_of_types):
             start_index = index * 12 + 2
             field_number = unpacked[start_index-1]
-            type_data = [encoded.decode() for encoded in unpacked[start_index:start_index + field_number + 1]]
+            type_data = [encoded.decode()[:encoded.decode().index('\x00')] for encoded in unpacked[start_index:start_index + field_number + 1]]
             newType = Type(type_data)
             newPage.add_type(newType)
         return newPage
+
+class TypeFile:
+
+    def __init__(self):
+        self.file_name = "sys.cat"
+
+    def add_type(self):
+        pass
+
+    def delete_type(self):
+        pass
+
+    def list_types(self):
+        pass
+
+class RecordFile:
+
+    def __init__(self, record_type_name):
+        self.fie_name = record_type_name
+
+    def create_record(self):
+        pass
+
+    def search_record(self):
+        pass
+
+    def update_record(self):
+        pass
+
+    def delete_record(self):
+        pass
+
+    def list_records(self):
+        pass
+
+"""
+with open("sys.cat", "rb+") as sys_cat:
+    sys_cat.write(tp.pack())
+    sys_cat.write(tp2.pack())
+
+with open("sys.cat", "rb+") as sys_cat:
+    packed = sys_cat.read(2888)
+    sys_cat.seek(2888)
+    packed2 = sys_cat.read(2888)
+"""
