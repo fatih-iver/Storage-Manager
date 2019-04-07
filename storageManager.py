@@ -1,4 +1,5 @@
 import struct
+import os
 
 class Type:
 
@@ -169,14 +170,80 @@ class TypeFile:
     def __init__(self):
         self.file_name = "sys.cat"
 
-    def add_type(self):
-        pass
+    def add_type(self, type_data):
 
-    def delete_type(self):
-        pass
+        new_type = Type(type_data)
+
+        with open("sys.cat", "rb+") as sys_cat:
+
+            index = 0
+            while True:
+
+                position = index * TypePage.NUMBER_OF_BYTES
+                sys_cat.seek(position)
+                packed = sys_cat.read(TypePage.NUMBER_OF_BYTES)
+
+                if len(packed) != 0:
+                    curr_type_page = TypePage.unpack(packed)
+                else:
+                    curr_type_page = TypePage()
+
+                if curr_type_page.add_type(new_type):
+                    packed = curr_type_page.pack()
+                    sys_cat.write(packed)
+                    break
+                else:
+                    index += 1
+
+    def delete_type(self, type_name):
+
+        with open("sys.cat", "rb+") as sys_cat:
+
+            index = 0
+            while True:
+
+                position = index * TypePage.NUMBER_OF_BYTES
+                sys_cat.seek(position)
+                packed = sys_cat.read(TypePage.NUMBER_OF_BYTES)
+
+                if len(packed) != 0:
+                    curr_type_page = TypePage.unpack(packed)
+                else:
+                    break
+
+                if curr_type_page.delete_type(type_name):
+                    if os.path.exists(type_name):
+                        os.remove(type_name)
+                    packed = curr_type_page.pack()
+                    sys_cat.write(packed)
+                    break
+
+                index += 1
 
     def list_types(self):
-        pass
+
+        types = []
+
+        with open("sys.cat", "rb+") as sys_cat:
+
+            index = 0
+            while True:
+
+                position = index * TypePage.NUMBER_OF_BYTES
+                sys_cat.seek(position)
+                packed = sys_cat.read(TypePage.NUMBER_OF_BYTES)
+
+                if len(packed) != 0:
+                    curr_type_page = TypePage.unpack(packed)
+                else:
+                    break
+
+                curr_types = curr_type_page.types
+                types.extend(curr_types)
+
+                index += 1
+
+        return sorted(types)
 
 class RecordFile:
 
@@ -198,13 +265,4 @@ class RecordFile:
     def list_records(self):
         pass
 
-"""
-with open("sys.cat", "rb+") as sys_cat:
-    sys_cat.write(tp.pack())
-    sys_cat.write(tp2.pack())
 
-with open("sys.cat", "rb+") as sys_cat:
-    packed = sys_cat.read(2888)
-    sys_cat.seek(2888)
-    packed2 = sys_cat.read(2888)
-"""
