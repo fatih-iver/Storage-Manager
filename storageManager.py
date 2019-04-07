@@ -456,14 +456,18 @@ with open(output_file_name, 'w') as output_file:
 
                     field_values = record_file.search_record(type_name, record_key)
                     if field_values:
-                        for field_value in field_values:
-                            output_file.write(str(field_value) + ' ')
+                        for i in range(len(field_values)):
+                            output_file.write(str(field_values[i]))
+                            if i != len(field_values) - 1:
+                                output_file.write(' ')
                         output_file.write('\n')
 
                 # List
                 else:
                     sorted_records = record_file.list_records(type_name)
                     for each_record in sorted_records:
-                        for each_field in each_record:
-                            output_file.write(str(each_field) + ' ')
+                        for i in range(len(each_record)):
+                            output_file.write(str(each_record[i]))
+                            if i != len(each_record) - 1:
+                                output_file.write(' ')
                         output_file.write('\n')
