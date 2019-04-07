@@ -1,5 +1,6 @@
-import struct
 import os
+import sys
+import struct
 
 class Type:
 
@@ -110,7 +111,6 @@ class RecordPage:
             newPage.add_record(newRecord)
         return newPage
 
-
 class TypePage:
 
     MAX_TYPE_NUMBER = 30
@@ -191,6 +191,7 @@ class TypeFile:
                 if curr_type_page.add_type(new_type):
                     packed = curr_type_page.pack()
                     sys_cat.write(packed)
+                    open(new_type.type_name, 'a').close()
                     break
 
                 index += 1
@@ -212,13 +213,14 @@ class TypeFile:
                     break
 
                 if curr_type_page.delete_type(type_name):
-                    if os.path.exists(type_name):
-                        os.remove(type_name)
                     packed = curr_type_page.pack()
                     sys_cat.write(packed)
                     break
 
                 index += 1
+
+            if os.path.exists(type_name):
+                os.remove(type_name)
 
     def list_types(self):
 
@@ -239,7 +241,7 @@ class TypeFile:
                     break
 
                 curr_types = curr_type_page.types
-                types.extend(curr_types)
+                types.extend([curr_type.type_name for curr_type in curr_types])
 
                 index += 1
 
@@ -383,3 +385,87 @@ class RecordFile:
         return sorted(records, key = lambda field_values: field_values[0])
 
 
+input_file_name = sys.argv[1]
+output_file_name = sys.argv[2]
+
+types = {}
+records = {}
+
+def sortPrimary(record_fields):
+    return record_fields[0]
+
+
+with open(output_file_name, 'w') as output_file:
+    with open(input_file_name, 'r') as input_file:
+
+        for eachline in input_file:
+            operation = eachline.strip().split()
+
+            action = operation[0]
+            type = operation[1]
+
+            if action != "list" or type != "type":
+                type_name = operation[2]
+
+            # DDL Operation
+            if type == "type":
+
+                type_file = TypeFile()
+
+                # Create
+                if action == "create":
+
+                    field_number = operation[3]
+                    field_names = operation[4:]
+
+                    type_file.add_type([type_name] + field_names)
+
+                # Delete
+                elif action == "delete":
+
+                    type_file.delete_type(type_name)
+
+                # List
+                else:
+                    sorted_types = type_file.list_types()
+
+                    for each_type in sorted_types:
+                        output_file.write(each_type + '\n')
+
+            # DML Operation
+            else:
+
+                record_file = RecordFile(type_name)
+
+                if action != "create" and action != "list":
+                    record_key = operation[3]
+
+                # Create
+                if action == "create":
+                    field_values = [int(field_value) for field_value in operation[3:]]
+                    record_file.create_record(type_name, field_values)
+
+                # Delete
+                elif action == "delete":
+                    record_file.delete_record(type_name, record_key)
+
+                # Update
+                elif action == "update":
+                    field_values = operation[3:]
+                    record_file.update_record(type_name, record_key, field_values)
+
+                # Search
+                elif action == "search":
+
+                    field_values = record_file.search_record(type_name, record_key)
+                    if field_values:
+                        output_file.write(field_values + ' ')
+                        output_file.write('\n')
+
+                # List
+                else:
+                    sorted_records = record_file.list_records(type_name)
+                    for each_record in sorted_records:
+                        for each_field in each_record:
+                            output_file.write(str(each_field) + ' ')
+                        output_file.write('\n')

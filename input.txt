@@ -1,0 +1,5 @@
+create type cat 3 name age species
+create type Human 2 name age
+create record cat 5 2 3
+create record cat 8 1 0
+list record cat
