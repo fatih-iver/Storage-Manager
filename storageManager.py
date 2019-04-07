@@ -179,8 +179,6 @@ class TypeFile:
             index = 0
             while True:
 
-                position = index * TypePage.NUMBER_OF_BYTES
-                sys_cat.seek(position)
                 packed = sys_cat.read(TypePage.NUMBER_OF_BYTES)
 
                 if len(packed) != 0:
@@ -190,8 +188,10 @@ class TypeFile:
 
                 if curr_type_page.add_type(new_type):
                     packed = curr_type_page.pack()
+                    position = index * TypePage.NUMBER_OF_BYTES
+                    sys_cat.seek(position)
                     sys_cat.write(packed)
-                    open(new_type.type_name, 'a').close()
+                    open(new_type.type_name + ".txt", 'a').close()
                     break
 
                 index += 1
@@ -203,8 +203,6 @@ class TypeFile:
             index = 0
             while True:
 
-                position = index * TypePage.NUMBER_OF_BYTES
-                sys_cat.seek(position)
                 packed = sys_cat.read(TypePage.NUMBER_OF_BYTES)
 
                 if len(packed) != 0:
@@ -214,13 +212,15 @@ class TypeFile:
 
                 if curr_type_page.delete_type(type_name):
                     packed = curr_type_page.pack()
+                    position = index * TypePage.NUMBER_OF_BYTES
+                    sys_cat.seek(position)
                     sys_cat.write(packed)
                     break
 
                 index += 1
 
-            if os.path.exists(type_name):
-                os.remove(type_name)
+            if os.path.exists(type_name + ".txt"):
+                os.remove(type_name + ".txt")
 
     def list_types(self):
 
@@ -231,8 +231,6 @@ class TypeFile:
             index = 0
             while True:
 
-                position = index * TypePage.NUMBER_OF_BYTES
-                sys_cat.seek(position)
                 packed = sys_cat.read(TypePage.NUMBER_OF_BYTES)
 
                 if len(packed) != 0:
@@ -256,13 +254,11 @@ class RecordFile:
 
         new_record = Record(field_values)
 
-        with open(type_name, "rb+") as record_file:
+        with open(type_name + ".txt", "rb+") as record_file:
 
             index = 0
             while True:
 
-                position = index * RecordPage.NUMBER_OF_BYTES
-                record_file.seek(position)
                 packed = record_file.read(RecordPage.NUMBER_OF_BYTES)
 
                 if len(packed) != 0:
@@ -272,6 +268,8 @@ class RecordFile:
 
                 if curr_type_page.add_record(new_record):
                     packed = curr_type_page.pack()
+                    position = index * RecordPage.NUMBER_OF_BYTES
+                    record_file.seek(position)
                     record_file.write(packed)
                     break
 
@@ -279,121 +277,120 @@ class RecordFile:
 
     def search_record(self, type_name, record_key):
 
-        with open(type_name, "rb+") as record_file:
+        if os.path.exists(type_name + ".txt"):
 
-            index = 0
-            while True:
+            with open(type_name + ".txt", "rb+") as record_file:
 
-                position = index * RecordPage.NUMBER_OF_BYTES
-                record_file.seek(position)
-                packed = record_file.read(RecordPage.NUMBER_OF_BYTES)
+                index = 0
+                while True:
 
-                if len(packed) != 0:
-                    curr_record_page = RecordPage.unpack(packed)
-                else:
-                    return None
+                    packed = record_file.read(RecordPage.NUMBER_OF_BYTES)
 
-                returned_record = curr_record_page.search_record(record_key)
+                    if len(packed) != 0:
+                        curr_record_page = RecordPage.unpack(packed)
+                    else:
+                        return None
 
-                if returned_record:
-                    return returned_record.field_values
+                    returned_record = curr_record_page.search_record(record_key)
 
-                index += 1
+                    if returned_record:
+                        return returned_record.field_values
+
+                    index += 1
+        return None
 
     def update_record(self, type_name, record_key, field_values):
 
-        new_record = Record(field_values)
+        if os.path.exists(type_name + ".txt"):
 
-        with open(type_name, "rb+") as record_file:
+            new_record = Record(field_values)
 
-            index = 0
-            while True:
+            with open(type_name + ".txt", "rb+") as record_file:
 
-                position = index * RecordPage.NUMBER_OF_BYTES
-                record_file.seek(position)
-                packed = record_file.read(RecordPage.NUMBER_OF_BYTES)
+                index = 0
+                while True:
 
-                if len(packed) != 0:
-                    curr_record_page = RecordPage.unpack(packed)
-                else:
-                    break
+                    packed = record_file.read(RecordPage.NUMBER_OF_BYTES)
 
-                returned_record = curr_record_page.search_record(record_key)
+                    if len(packed) != 0:
+                        curr_record_page = RecordPage.unpack(packed)
+                    else:
+                        break
 
-                if returned_record:
-                    curr_record_page.delete_record(returned_record)
-                    curr_record_page.add_record(new_record)
-                    packed = curr_record_page.pack()
-                    record_file.write(packed)
+                    returned_record = curr_record_page.search_record(record_key)
 
-                    break
+                    if returned_record:
+                        curr_record_page.delete_record(record_key)
+                        curr_record_page.add_record(new_record)
+                        packed = curr_record_page.pack()
+                        position = index * RecordPage.NUMBER_OF_BYTES
+                        record_file.seek(position)
+                        record_file.write(packed)
+                        break
 
-                index += 1
+                    index += 1
 
     def delete_record(self, type_name, record_key):
 
-        with open(type_name, "rb+") as record_file:
+        if os.path.exists(type_name + ".txt"):
 
-            index = 0
-            while True:
+            with open(type_name + ".txt", "rb+") as record_file:
 
-                position = index * RecordPage.NUMBER_OF_BYTES
-                record_file.seek(position)
-                packed = record_file.read(RecordPage.NUMBER_OF_BYTES)
+                index = 0
+                while True:
 
-                if len(packed) != 0:
-                    curr_record_page = RecordPage.unpack(packed)
-                else:
-                    break
+                    packed = record_file.read(RecordPage.NUMBER_OF_BYTES)
 
-                returned_record = curr_record_page.search_record(record_key)
+                    if len(packed) != 0:
+                        curr_record_page = RecordPage.unpack(packed)
+                    else:
+                        break
 
-                if returned_record:
-                    curr_record_page.delete_record(returned_record)
-                    packed = curr_record_page.pack()
-                    record_file.write(packed)
-                    break
+                    returned_record = curr_record_page.search_record(record_key)
 
-                index += 1
+                    if returned_record:
+                        curr_record_page.delete_record(record_key)
+                        packed = curr_record_page.pack()
+                        position = index * RecordPage.NUMBER_OF_BYTES
+                        record_file.seek(position)
+                        record_file.write(packed)
+                        break
+
+                    index += 1
 
     def list_records(self, type_name):
 
         records = []
 
-        with open(type_name, "rb+") as record_file:
+        if os.path.exists(type_name + ".txt"):
 
-            index = 0
-            while True:
+            with open(type_name + ".txt", "rb+") as record_file:
 
-                position = index * RecordPage.NUMBER_OF_BYTES
-                record_file.seek(position)
-                packed = record_file.read(RecordPage.NUMBER_OF_BYTES)
+                index = 0
+                while True:
 
-                if len(packed) != 0:
-                    curr_record_page = RecordPage.unpack(packed)
-                else:
-                    break
+                    packed = record_file.read(RecordPage.NUMBER_OF_BYTES)
 
-                curr_records = curr_record_page.records
+                    if len(packed) != 0:
+                        curr_record_page = RecordPage.unpack(packed)
+                    else:
+                        break
 
-                curr_record_fields = [curr_record.field_values for curr_record in curr_records]
+                    curr_record_fields = [curr_record.field_values for curr_record in curr_record_page.records]
 
-                records.extend(curr_record_fields)
+                    records.extend(curr_record_fields)
 
-                index += 1
+                    index += 1
 
-        return sorted(records, key = lambda field_values: field_values[0])
+            return sorted(records, key = lambda field_values: field_values[0])
+
+        return records
 
 
 input_file_name = sys.argv[1]
 output_file_name = sys.argv[2]
 
-types = {}
-records = {}
-
-def sortPrimary(record_fields):
-    return record_fields[0]
-
+open("sys.cat", "a").close()
 
 with open(output_file_name, 'w') as output_file:
     with open(input_file_name, 'r') as input_file:
@@ -438,7 +435,7 @@ with open(output_file_name, 'w') as output_file:
                 record_file = RecordFile(type_name)
 
                 if action != "create" and action != "list":
-                    record_key = operation[3]
+                    record_key = int(operation[3])
 
                 # Create
                 if action == "create":
@@ -451,7 +448,7 @@ with open(output_file_name, 'w') as output_file:
 
                 # Update
                 elif action == "update":
-                    field_values = operation[3:]
+                    field_values = [int(field_value) for field_value in operation[3:]]
                     record_file.update_record(type_name, record_key, field_values)
 
                 # Search
@@ -459,7 +456,8 @@ with open(output_file_name, 'w') as output_file:
 
                     field_values = record_file.search_record(type_name, record_key)
                     if field_values:
-                        output_file.write(field_values + ' ')
+                        for field_value in field_values:
+                            output_file.write(str(field_value) + ' ')
                         output_file.write('\n')
 
                 # List
