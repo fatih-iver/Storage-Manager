@@ -160,7 +160,7 @@ class TypePage:
         for index in range(number_of_types):
             start_index = index * 12 + 2
             field_number = unpacked[start_index-1]
-            type_data = [encoded.decode()[:encoded.decode().index('\x00')] for encoded in unpacked[start_index:start_index + field_number + 1]]
+            type_data = [encoded.decode()[:encoded.decode().find('\x00')] for encoded in unpacked[start_index:start_index + field_number + 1]]
             newType = Type(type_data)
             newPage.add_type(newType)
         return newPage
@@ -170,9 +170,33 @@ class TypeFile:
     def __init__(self):
         self.file_name = "sys.cat"
 
+    def search_type(self, type_name):
+
+        with open("sys.cat", "rb+") as sys_cat:
+
+            index = 0
+            while True:
+
+                packed = sys_cat.read(TypePage.NUMBER_OF_BYTES)
+
+                if len(packed) != 0:
+                    curr_type_page = TypePage.unpack(packed)
+                else:
+                    return False
+
+                if curr_type_page.search_type(type_name):
+                    return True
+
+                index += 1
+
+        return False
+
     def add_type(self, type_data):
 
         new_type = Type(type_data)
+
+        if self.search_type(type_data[0]):
+            return
 
         with open("sys.cat", "rb+") as sys_cat:
 
@@ -253,7 +277,42 @@ class RecordFile:
     def __init__(self, record_type_name):
         self.file_name = record_type_name
 
+    def search_record(self, type_name, record_key):
+
+        page_index = 0
+
+        while os.path.exists(type_name + str(page_index) + ".txt"):
+
+            with open(type_name + str(page_index) + ".txt", "rb+") as record_file:
+
+                index = 0
+                while True:
+
+                    packed = record_file.read(RecordPage.NUMBER_OF_BYTES)
+
+                    if len(packed) != 0:
+                        curr_record_page = RecordPage.unpack(packed)
+                    else:
+                        break
+
+                    returned_record = curr_record_page.search_record(record_key)
+
+                    if returned_record:
+                        return returned_record.field_values
+
+                    index += 1
+
+                    if index == 1000:
+                        break
+
+            page_index += 1
+
+        return None
+
     def create_record(self, type_name, field_values):
+
+        if self.search_record(type_name, field_values[0]) is not None:
+            return
 
         new_record = Record(field_values)
 
@@ -289,37 +348,6 @@ class RecordFile:
             page_index += 1
             open(type_name + str(page_index) + ".txt", "a").close()
 
-    def search_record(self, type_name, record_key):
-
-        page_index = 0
-
-        while os.path.exists(type_name + str(page_index) + ".txt"):
-
-            with open(type_name + str(page_index) + ".txt", "rb+") as record_file:
-
-                index = 0
-                while True:
-
-                    packed = record_file.read(RecordPage.NUMBER_OF_BYTES)
-
-                    if len(packed) != 0:
-                        curr_record_page = RecordPage.unpack(packed)
-                    else:
-                        break
-
-                    returned_record = curr_record_page.search_record(record_key)
-
-                    if returned_record:
-                        return returned_record.field_values
-
-                    index += 1
-
-                    if index == 1000:
-                        break
-
-            page_index += 1
-
-        return None
 
     def update_record(self, type_name, record_key, field_values):
 
@@ -439,7 +467,8 @@ with open(output_file_name, 'w') as output_file:
 
         for eachline in input_file:
             operation = eachline.strip().split()
-
+            if not operation:
+                continue
             action = operation[0]
             type = operation[1]
 
