@@ -312,7 +312,7 @@ class RecordFile:
     def create_record(self, type_name, field_values):
 
         if self.search_record(type_name, field_values[0]) is not None:
-            return
+            self.delete_record(type_name, field_values[0])
 
         new_record = Record(field_values)
 
